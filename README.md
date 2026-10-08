@@ -56,3 +56,9 @@ Building the project requires the **devkitARM** toolchain.
 
 3. **Install:**
    Copy `PokeDaisy.cia` to your 3DS SD card and install it using FBI.
+
+## Acknowledgements
+
+This project is built upon the incredible work of two open-source projects:
+- [**mGBA**](https://github.com/mgba-emu/mgba): The core GBA emulation is powered by mGBA.
+- [**PokeDaisy**](https://github.com/lidor30/pokedaisy): The original companion app for Android handhelds, which inspired this native 3DS port.
