@@ -15,15 +15,19 @@ set(OS_DEFINES _GNU_SOURCE COLOR_16_BIT COLOR_5_6_5 FIXED_ROM_BUFFER IOAPI_NO_64
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 if(${CMAKE_BUILD_TYPE} STREQUAL Debug OR ${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
-	list(APPEND OS_LIB citro3dd ctrud)
+	list(APPEND OS_LIB citro2dd citro3dd ctrud)
 else()
-	list(APPEND OS_LIB citro3d ctru)
+	list(APPEND OS_LIB citro2d citro3d ctru)
 endif()
 set(OS_SRC
 	${PROJECT_SOURCE_DIR}/src/util/memory.c
 	${CMAKE_CURRENT_SOURCE_DIR}/3ds-vfs.c
 	${CMAKE_CURRENT_SOURCE_DIR}/ctru-heap.c
 	${CMAKE_CURRENT_SOURCE_DIR}/socket.c
+	${CMAKE_CURRENT_SOURCE_DIR}/pokedaisy/pd_ui.c
+	${CMAKE_CURRENT_SOURCE_DIR}/pokedaisy/pd_gen3.c
+	${CMAKE_CURRENT_SOURCE_DIR}/pokedaisy/pd_data.c
+	${CMAKE_CURRENT_SOURCE_DIR}/pokedaisy/pd_lz77.c
 	PARENT_SCOPE)
 set(OS_LIB ${OS_LIB} PARENT_SCOPE)
 source_group("3DS-specific code" FILES ${OS_SRC})

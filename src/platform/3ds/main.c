@@ -29,6 +29,8 @@
 #include <3ds.h>
 #include <3ds/gpu/gx.h>
 
+#include "pokedaisy/include/pd_ui.h"
+
 mLOG_DECLARE_CATEGORY(GUI_3DS);
 mLOG_DEFINE_CATEGORY(GUI_3DS, "3DS", "gui.3ds");
 
@@ -95,7 +97,7 @@ static C3D_Tex outputTexture[2];
 static int activeOutputTexture = 0;
 static ndspWaveBuf dspBuffer[DSP_BUFFERS];
 static int bufferId = 0;
-static bool frameLimiter = true;
+bool frameLimiter = true;
 static u32 frameCounter;
 
 static C3D_RenderTarget* topScreen;
@@ -147,10 +149,18 @@ static bool _initGpu(void) {
 	C3D_RenderTargetClear(upscaleBuffer, C3D_CLEAR_COLOR, 0, 0);
 	C3D_FrameEnd(0);
 
-	return ctrInitGpu();
+	if (!ctrInitGpu()) {
+		return false;
+	}
+	
+	PokeDaisy_InitUI();
+	
+	return true;
 }
 
 static void _cleanup(void) {
+	PokeDaisy_CleanupUI();
+
 	if (outputBuffer) {
 		linearFree(outputBuffer);
 		outputBuffer = NULL;
@@ -221,6 +231,7 @@ static void _drawEnd(void) {
 		return;
 	}
 	ctrEndFrame();
+	
 	C3D_RenderTargetSetOutput(topScreen, GFX_TOP, GFX_LEFT, GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8));
 	C3D_RenderTargetSetOutput(bottomScreen, GFX_BOTTOM, GFX_LEFT, GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8));
 	C3D_FrameEnd(0);
@@ -614,6 +625,10 @@ static void _drawFrame(struct mGUIRunner* runner, bool faded) {
 	}
 
 	_drawTex(runner->core, faded, interframeBlending);
+	
+	if (screenMode >= SM_PA_TOP) {
+		PokeDaisy_DrawBottomScreen(bottomScreen, runner->core);
+	}
 }
 
 static void _drawScreenshot(struct mGUIRunner* runner, const mColor* pixels, unsigned width, unsigned height, bool faded) {
@@ -639,6 +654,9 @@ static void _drawScreenshot(struct mGUIRunner* runner, const mColor* pixels, uns
 	_drawTex(runner->core, faded, false);
 }
 
+extern uint16_t g_pd_injectedKeys;
+extern bool g_pd_injectingKeys;
+
 static uint16_t _pollGameInput(struct mGUIRunner* runner) {
 	UNUSED(runner);
 
@@ -646,6 +664,11 @@ static uint16_t _pollGameInput(struct mGUIRunner* runner) {
 	uint32_t activeKeys = hidKeysHeld();
 	uint16_t keys = mInputMapKeyBits(&runner->core->inputMap, _3DS_INPUT, activeKeys, 0);
 	keys |= (activeKeys >> 24) & 0xF0;
+    
+    if (g_pd_injectingKeys) {
+        return keys | g_pd_injectedKeys;
+    }
+    
 	return keys;
 }
 
