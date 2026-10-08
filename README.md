@@ -4,6 +4,14 @@
 
 By reading and decrypting the GBA's RAM in real-time, PokeDaisy tracks your Pokémon's hidden stats, inventory, Pokedex, and location, providing a seamless "second screen" experience similar to the DS-era Pokémon games.
 
+## Download & Install
+
+Open **FBI** on your 3DS, select **Remote Install -> Scan QR Code**, and scan the QR code below to instantly download and install the latest release directly over WiFi!
+
+<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://github.com/cantpauseitmum/3DS-PokeDaisy/releases/latest/download/PokeDaisy.cia" width="200" height="200" alt="PokeDaisy Latest Release QR Code">
+
+*(Alternatively, you can manually download the `.cia` file from the [Releases](https://github.com/cantpauseitmum/3DS-PokeDaisy/releases/latest) page.)*
+
 ## Features
 
 The bottom screen features an interactive Tab Bar with the following screens:
