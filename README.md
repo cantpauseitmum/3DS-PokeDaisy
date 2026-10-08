@@ -12,6 +12,13 @@ Open **FBI** on your 3DS, select **Remote Install -> Scan QR Code**, and scan th
 
 *(Alternatively, you can manually download the `.cia` file from the [Releases](https://github.com/cantpauseitmum/3DS-PokeDaisy/releases/latest) page.)*
 
+### Troubleshooting: Black Screen on Boot?
+If the app gets permanently stuck on a black screen when you first open it, your 3DS is missing its DSP firmware dump (which is required for the emulator to output audio). 
+**To fix this:**
+1. Open **Universal-Updater** on your 3DS.
+2. Search for **DSP1** (by zoogie) and install the `.cia` version.
+3. Open DSP1 from your Home Menu. It will instantly dump your firmware to the SD card and then delete itself. PokeDaisy will now boot flawlessly!
+
 ## Features
 
 The bottom screen features an interactive Tab Bar with the following screens:
