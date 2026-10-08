@@ -40,6 +40,9 @@ static DVLB_s* uiShader = NULL;
 static int GSH_FVEC_projectionMtx;
 static int GSH_FVEC_textureMtx;
 
+static C3D_AttrInfo mgba_attrInfo;
+static C3D_BufInfo mgba_bufInfo;
+
 bool ctrInitGpu(void) {
 	// Load vertex shader binary
 	uiShader = DVLB_ParseFile((u32*) uishader, uishader_size);
@@ -73,16 +76,16 @@ bool ctrInitGpu(void) {
 	C3D_AlphaTest(false, GPU_ALWAYS, 0);
 	C3D_BlendingColor(0);
 
-	C3D_AttrInfo* attrInfo = C3D_GetAttrInfo();
-	AttrInfo_Init(attrInfo);
-	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4); // in_pos
-	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 4); // in_tc0
-	AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4); // in_col
-	AttrInfo_AddLoader(attrInfo, 3, GPU_FLOAT, 2); // in_rot
+	AttrInfo_Init(&mgba_attrInfo);
+	AttrInfo_AddLoader(&mgba_attrInfo, 0, GPU_SHORT, 4); // in_pos
+	AttrInfo_AddLoader(&mgba_attrInfo, 1, GPU_SHORT, 4); // in_tc0
+	AttrInfo_AddLoader(&mgba_attrInfo, 2, GPU_UNSIGNED_BYTE, 4); // in_col
+	AttrInfo_AddLoader(&mgba_attrInfo, 3, GPU_FLOAT, 2); // in_rot
+	C3D_SetAttrInfo(&mgba_attrInfo);
 
-	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
-	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, ctrVertexBuffer, sizeof(struct ctrUIVertex), 4, 0x3210);
+	BufInfo_Init(&mgba_bufInfo);
+	BufInfo_Add(&mgba_bufInfo, ctrVertexBuffer, sizeof(struct ctrUIVertex), 4, 0x3210);
+	C3D_SetBufInfo(&mgba_bufInfo);
 
 	return true;
 }
@@ -96,16 +99,16 @@ void ctrRestoreState(void) {
 	C3D_AlphaTest(false, GPU_ALWAYS, 0);
 	C3D_BlendingColor(0);
 
-	C3D_AttrInfo* attrInfo = C3D_GetAttrInfo();
-	AttrInfo_Init(attrInfo);
-	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4); // in_pos
-	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 4); // in_tc0
-	AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4); // in_col
-	AttrInfo_AddLoader(attrInfo, 3, GPU_FLOAT, 2); // in_rot
+	AttrInfo_Init(&mgba_attrInfo);
+	AttrInfo_AddLoader(&mgba_attrInfo, 0, GPU_SHORT, 4); // in_pos
+	AttrInfo_AddLoader(&mgba_attrInfo, 1, GPU_SHORT, 4); // in_tc0
+	AttrInfo_AddLoader(&mgba_attrInfo, 2, GPU_UNSIGNED_BYTE, 4); // in_col
+	AttrInfo_AddLoader(&mgba_attrInfo, 3, GPU_FLOAT, 2); // in_rot
+	C3D_SetAttrInfo(&mgba_attrInfo);
 
-	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
-	BufInfo_Init(bufInfo);
-	BufInfo_Add(bufInfo, ctrVertexBuffer, sizeof(struct ctrUIVertex), 4, 0x3210);
+	BufInfo_Init(&mgba_bufInfo);
+	BufInfo_Add(&mgba_bufInfo, ctrVertexBuffer, sizeof(struct ctrUIVertex), 4, 0x3210);
+	C3D_SetBufInfo(&mgba_bufInfo);
 	
 	// Ensure activeTexture is reset so it forces a re-bind next time
 	activeTexture = NULL;
