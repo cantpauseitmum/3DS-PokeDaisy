@@ -13,6 +13,7 @@
 
 bool ctrInitGpu(void);
 void ctrDeinitGpu(void);
+void ctrRestoreState(void);
 
 void ctrSetViewportSize(s16 w, s16 h, bool tilt);
 

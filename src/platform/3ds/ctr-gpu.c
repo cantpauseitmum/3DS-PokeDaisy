@@ -87,6 +87,30 @@ bool ctrInitGpu(void) {
 	return true;
 }
 
+void ctrRestoreState(void) {
+	C3D_BindProgram(&uiProgram);
+	
+	C3D_CullFace(GPU_CULL_NONE);
+	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_ALL);
+	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+	C3D_AlphaTest(false, GPU_ALWAYS, 0);
+	C3D_BlendingColor(0);
+
+	C3D_AttrInfo* attrInfo = C3D_GetAttrInfo();
+	AttrInfo_Init(attrInfo);
+	AttrInfo_AddLoader(attrInfo, 0, GPU_SHORT, 4); // in_pos
+	AttrInfo_AddLoader(attrInfo, 1, GPU_SHORT, 4); // in_tc0
+	AttrInfo_AddLoader(attrInfo, 2, GPU_UNSIGNED_BYTE, 4); // in_col
+	AttrInfo_AddLoader(attrInfo, 3, GPU_FLOAT, 2); // in_rot
+
+	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
+	BufInfo_Init(bufInfo);
+	BufInfo_Add(bufInfo, ctrVertexBuffer, sizeof(struct ctrUIVertex), 4, 0x3210);
+	
+	// Ensure activeTexture is reset so it forces a re-bind next time
+	activeTexture = NULL;
+}
+
 void ctrDeinitGpu(void) {
 	if (ctrVertexBuffer) {
 		linearFree(ctrVertexBuffer);

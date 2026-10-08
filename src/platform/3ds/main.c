@@ -154,6 +154,7 @@ static bool _initGpu(void) {
 	}
 	
 	PokeDaisy_InitUI();
+	ctrRestoreState();
 	
 	return true;
 }
@@ -628,6 +629,7 @@ static void _drawFrame(struct mGUIRunner* runner, bool faded) {
 	
 	if (screenMode >= SM_PA_TOP) {
 		PokeDaisy_DrawBottomScreen(bottomScreen, runner->core);
+		ctrRestoreState();
 	}
 }
 
