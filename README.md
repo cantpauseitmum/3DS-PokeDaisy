@@ -21,6 +21,10 @@ If the app gets permanently stuck on a black screen when you first open it, your
 
 ## Features
 
+- **Double-Buffered UI Rendering**: The bottom screen `citro2d` UI operates on an intelligent caching and double-buffered vertex system. It updates at 60fps without starving the emulator's CPU threads or causing GPU state clashes, preserving full emulation speed.
+- **Battle Automation**: The touch screen provides massive "FIGHT" and "SWITCH" buttons during battle. PokeDaisy injects A/B/D-Pad hardware macros directly into the emulator's polling loop, automating tedious menu navigation.
+- **Smart Fast-Forward**: Mapped to the `ZL` button, fast-forwarding automatically disables itself when entering battles or completing scripts.
+
 The bottom screen features an interactive Tab Bar with the following screens:
 
 1. **PARTY**: Displays your current 6-Pokémon roster. Tapping a Pokémon reveals its exact **IVs, EVs, Nature, Friendship, and Type Weaknesses/Resistances**, decrypting the Gen 3 data structures on the fly.
@@ -30,9 +34,13 @@ The bottom screen features an interactive Tab Bar with the following screens:
 5. **CARD**: Translates the proprietary `Gen3Text` encoding to display your Trainer Name, ID Number, Playtime, and exact Money.
 6. **GUIDE**: An offline walkthrough reader. Drop a `poke_guide.txt` file on the root of your 3DS SD card, and read it in real-time while you play.
 
-### Emulator Enhancements
-- **Battle Automation**: The touch screen provides massive "FIGHT" and "SWITCH" buttons during battle. PokeDaisy injects A/B/D-Pad hardware macros directly into the emulator's polling loop, automating tedious menu navigation.
-- **Smart Fast-Forward**: Mapped to the `ZL` button, fast-forwarding automatically disables itself when entering battles or completing scripts.
+## Frequently Asked Questions
+
+**How do I install an update? Will it overwrite my old version?**
+Yes! If you scan the new QR code in FBI (or install the new `.cia`), FBI will automatically detect the same Title ID and cleanly overwrite the old installation. You do not need to uninstall the old one first. 
+
+**How do I completely uninstall the app?**
+Open **System Settings** -> **Data Management** -> **Nintendo 3DS** -> **Software**, locate **PokeDaisy 3DS**, and tap **Delete**.
 
 ## Supported Games
 

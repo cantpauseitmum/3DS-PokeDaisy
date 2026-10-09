@@ -9,6 +9,26 @@
 #include "include/pd_lz77.h"
 
 static C2D_TextBuf g_staticBuf;
+static C2D_TextBuf g_dynamicBuf[2];
+static int g_dynamicBufIdx = 0;
+static C2D_Text g_tabTexts[6];
+static bool g_tabsInitialized = false;
+
+static bool g_ui_dirty = true;
+static int g_ui_update_timer = 0;
+
+static C2D_Text g_txt_partyLevels[6];
+static C2D_Text g_txt_partyStats;
+static C2D_Text g_txt_fight;
+static C2D_Text g_txt_switch;
+static C2D_Text g_txt_cancel;
+static C2D_Text g_txt_bagItems[10];
+static C2D_Text g_txt_mapLocation;
+static C2D_Text g_txt_dexStats;
+static C2D_Text g_txt_card;
+static C2D_Text g_txt_guide;
+static C2D_Text g_txt_ff;
+
 
 static const NativeConfig* g_config = NULL;
 static char g_activeGameCode[5] = "";
@@ -76,6 +96,8 @@ void PokeDaisy_InitUI(void) {
     C2D_Prepare();
     
     g_staticBuf = C2D_TextBufNew(4096);
+    g_dynamicBuf[0] = C2D_TextBufNew(4096);
+    g_dynamicBuf[1] = C2D_TextBufNew(4096);
     g_rgbaBuffer = (uint32_t*)linearMemAlign(256 * 256 * sizeof(uint32_t), 0x80);
     
     for (int i = 0; i < 6; i++) {
@@ -102,6 +124,8 @@ void PokeDaisy_CleanupUI(void) {
     C3D_TexDelete(&g_mapState.tex);
     if (g_rgbaBuffer) linearFree(g_rgbaBuffer);
     C2D_TextBufDelete(g_staticBuf);
+    C2D_TextBufDelete(g_dynamicBuf[0]);
+    C2D_TextBufDelete(g_dynamicBuf[1]);
     C2D_Fini();
 }
 
@@ -178,7 +202,16 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
     C2D_SceneBegin(bottomScreen);
     C2D_TargetClear(bottomScreen, C2D_Color32(240, 240, 240, 255));
     
-    C2D_TextBufClear(g_staticBuf);
+    g_ui_update_timer++;
+    if (g_ui_update_timer > 60) {
+        g_ui_dirty = true;
+        g_ui_update_timer = 0;
+    }
+    
+    if (g_ui_dirty) {
+        g_dynamicBufIdx ^= 1;
+        C2D_TextBufClear(g_dynamicBuf[g_dynamicBufIdx]);
+    }
     
     // Process Input
     uint32_t pKeysDown = hidKeysDown();
@@ -201,40 +234,50 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
         
         // Tab Bar
         if (touch.py > 210) { 
+            int oldTab = g_currentTab;
             if (touch.px < 53) g_currentTab = 0;
             else if (touch.px < 106) g_currentTab = 1;
             else if (touch.px < 159) g_currentTab = 2;
             else if (touch.px < 212) g_currentTab = 3;
             else if (touch.px < 265) g_currentTab = 4;
             else g_currentTab = 5;
+            if (oldTab != g_currentTab) g_ui_dirty = true;
         }
         
         // Touch Fast-Forward Toggle (Top Right)
         if (touch.py < 30 && touch.px > 270) {
             if (!(g_pd_lastKeysDown & KEY_TOUCH)) {
                 g_pd_fastForwarding = !g_pd_fastForwarding;
+                g_ui_dirty = true;
             }
         }
         
         // Touch Roster Selector (Left panel, Party tab)
         if (g_currentTab == 0 && touch.px < 120 && touch.py < 180) {
+            int oldIdx = g_selectedPartyIdx;
             g_selectedPartyIdx = touch.py / 30;
             if (g_selectedPartyIdx > 5) g_selectedPartyIdx = 5;
+            if (oldIdx != g_selectedPartyIdx) g_ui_dirty = true;
         }
         
         // Touch Bag Pocket Selector
         if (g_currentTab == 1) {
             if (touch.py < 30) {
+                int oldPocket = g_bagPocketIdx;
                 if (touch.px < 60) g_bagPocketIdx = 0;
                 else if (touch.px < 120) g_bagPocketIdx = 1;
                 else if (touch.px < 180) g_bagPocketIdx = 2;
                 else if (touch.px < 240) g_bagPocketIdx = 3;
                 else g_bagPocketIdx = 4;
                 g_bagScroll = 0;
+                if (oldPocket != g_bagPocketIdx) g_ui_dirty = true;
             } else if (touch.px > 260) {
                 // Scroll Buttons
-                if (touch.py < 100 && g_bagScroll > 0) g_bagScroll--;
-                else if (touch.py > 120 && touch.py < 200) g_bagScroll++;
+                int oldScroll = g_bagScroll;
+                if (touch.py < 100 && g_bagScroll > 0) g_bagScroll -= 8;
+                else if (touch.py > 120 && touch.py < 200) g_bagScroll += 8;
+                if (g_bagScroll < 0) g_bagScroll = 0;
+                if (oldScroll != g_bagScroll) g_ui_dirty = true;
             }
         }
     }
@@ -344,10 +387,12 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
                     
                     char lvlStr[32];
                     snprintf(lvlStr, sizeof(lvlStr), "Lv.%d", mon.level);
-                    C2D_Text t;
-                    C2D_TextParse(&t, g_staticBuf, lvlStr);
-                    C2D_TextOptimize(&t);
-                    C2D_DrawText(&t, C2D_WithColor, 32.0f, yOff + 20.0f, 0.5f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
+                    static C2D_Text t[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&t[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], lvlStr);
+                        C2D_TextOptimize(&t[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&t[g_dynamicBufIdx], C2D_WithColor, 32.0f, yOff + 20.0f, 0.5f, 0.4f, 0.4f, C2D_Color32(0, 0, 0, 255));
                 } else {
                     g_playerIcons[i].currentSpecies = -1;
                 }
@@ -378,24 +423,30 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
                          selMon.spdef, selMon.ivs[5], selMon.evs[5],
                          selMon.speed, selMon.ivs[3], selMon.evs[3]
                 );
-                C2D_Text t;
-                C2D_TextParse(&t, g_staticBuf, statText);
-                C2D_TextOptimize(&t);
-                C2D_DrawText(&t, C2D_WithColor, 140.0f, 10.0f, 0.5f, 0.45f, 0.45f, C2D_Color32(0, 0, 0, 255));
+                static C2D_Text t[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&t[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], statText);
+                        C2D_TextOptimize(&t[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&t[g_dynamicBufIdx], C2D_WithColor, 140.0f, 10.0f, 0.5f, 0.45f, 0.45f, C2D_Color32(0, 0, 0, 255));
                 
                 if (inBattle) {
                     // Draw Touch Battle Controls
                     C2D_DrawRectSolid(140.0f, 160.0f, 0.5f, 75.0f, 40.0f, C2D_Color32(200, 50, 50, 255));
-                    C2D_Text f;
-                    C2D_TextParse(&f, g_staticBuf, "FIGHT");
-                    C2D_TextOptimize(&f);
-                    C2D_DrawText(&f, C2D_WithColor, 150.0f, 170.0f, 0.5f, 0.5f, 0.5f, C2D_Color32(255, 255, 255, 255));
+                    static C2D_Text f[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&f[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], "FIGHT");
+                        C2D_TextOptimize(&f[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&f[g_dynamicBufIdx], C2D_WithColor, 150.0f, 170.0f, 0.5f, 0.5f, 0.5f, C2D_Color32(255, 255, 255, 255));
                     
                     C2D_DrawRectSolid(225.0f, 160.0f, 0.5f, 75.0f, 40.0f, C2D_Color32(50, 50, 200, 255));
-                    C2D_Text s;
-                    C2D_TextParse(&s, g_staticBuf, "SWITCH");
-                    C2D_TextOptimize(&s);
-                    C2D_DrawText(&s, C2D_WithColor, 230.0f, 170.0f, 0.5f, 0.5f, 0.5f, C2D_Color32(255, 255, 255, 255));
+                    static C2D_Text s[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&s[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], "SWITCH");
+                        C2D_TextOptimize(&s[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&s[g_dynamicBufIdx], C2D_WithColor, 230.0f, 170.0f, 0.5f, 0.5f, 0.5f, C2D_Color32(255, 255, 255, 255));
                     
                     // Touch logic for Battle Buttons
                     if (pKeysDown & KEY_TOUCH) {
@@ -473,18 +524,24 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
             for (int i = 0; i < 5; i++) {
                 C2D_DrawRectSolid(i * 64, 0, 0.5f, 62, 20, (i == g_bagPocketIdx) ? C2D_Color32(200, 200, 200, 255) : C2D_Color32(100, 100, 100, 255));
                 char pL[4]; snprintf(pL, sizeof(pL), "%d", i+1);
-                C2D_Text t; C2D_TextParse(&t, g_staticBuf, pL); C2D_TextOptimize(&t);
-                C2D_DrawText(&t, C2D_WithColor, i * 64 + 25, 2, 0.5f, 0.5f, 0.5f, C2D_Color32(0, 0, 0, 255));
+                static C2D_Text t[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&t[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], pL);
+                        C2D_TextOptimize(&t[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&t[g_dynamicBufIdx], C2D_WithColor, i * 64 + 25, 2, 0.5f, 0.5f, 0.5f, C2D_Color32(0, 0, 0, 255));
             }
             
             // Draw Scroll buttons
             C2D_DrawRectSolid(280, 30, 0.5f, 40, 50, C2D_Color32(120, 120, 120, 255));
             C2D_DrawRectSolid(280, 150, 0.5f, 40, 50, C2D_Color32(120, 120, 120, 255));
             
-            C2D_Text c2dBagText;
-            C2D_TextParse(&c2dBagText, g_staticBuf, bag_text);
-            C2D_TextOptimize(&c2dBagText);
-            C2D_DrawText(&c2dBagText, C2D_WithColor, 10.0f, 30.0f, 0.5f, 0.55f, 0.55f, C2D_Color32(0, 0, 0, 255));
+            static C2D_Text c2dBagText[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&c2dBagText[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], bag_text);
+                        C2D_TextOptimize(&c2dBagText[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&c2dBagText[g_dynamicBufIdx], C2D_WithColor, 10.0f, 30.0f, 0.5f, 0.55f, 0.55f, C2D_Color32(0, 0, 0, 255));
         } else if (g_currentTab == 2) {
             // MAP ENGINE
             if (g_config->regionMapGfx != 0 && g_config->regionMapPal != 0 && g_config->regionMapTilemap != 0) {
@@ -570,18 +627,22 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
                         uint8_t mapSecId = core->busRead8(core, mapHeaderPtr + 0x14);
                         char locText[64];
                         snprintf(locText, sizeof(locText), "Current Loc ID: %d", mapSecId);
-                        C2D_Text c2dLoc;
-                        C2D_TextParse(&c2dLoc, g_staticBuf, locText);
-                        C2D_TextOptimize(&c2dLoc);
+                        static C2D_Text c2dLoc[2];
+                        if (g_ui_dirty) {
+                            C2D_TextParse(&c2dLoc[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], locText);
+                            C2D_TextOptimize(&c2dLoc[g_dynamicBufIdx]);
+                        }
                         C2D_DrawRectSolid(40.0f, 185.0f, 0.5f, 240.0f, 20.0f, C2D_Color32(0, 0, 0, 180));
-                        C2D_DrawText(&c2dLoc, C2D_WithColor, 45.0f, 187.0f, 0.5f, 0.5f, 0.5f, C2D_Color32(255, 255, 255, 255));
+                        C2D_DrawText(&c2dLoc[g_dynamicBufIdx], C2D_WithColor, 45.0f, 187.0f, 0.5f, 0.5f, 0.5f, C2D_Color32(255, 255, 255, 255));
                     }
                 }
             } else {
-                C2D_Text noMapText;
-                C2D_TextParse(&noMapText, g_staticBuf, "Map not supported for this game yet.");
-                C2D_TextOptimize(&noMapText);
-                C2D_DrawText(&noMapText, C2D_WithColor, 10.0f, 80.0f, 0.5f, 0.55f, 0.55f, C2D_Color32(0, 0, 0, 255));
+                static C2D_Text noMapText[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&noMapText[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], "Map not supported for this game yet.");
+                        C2D_TextOptimize(&noMapText[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&noMapText[g_dynamicBufIdx], C2D_WithColor, 10.0f, 80.0f, 0.5f, 0.55f, 0.55f, C2D_Color32(0, 0, 0, 255));
             }
         } else if (g_currentTab == 3) {
             // DEX
@@ -657,10 +718,12 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
                 snprintf(dexText, sizeof(dexText), "Pokedex not available yet.");
             }
             
-            C2D_Text t;
-            C2D_TextParse(&t, g_staticBuf, dexText);
-            C2D_TextOptimize(&t);
-            C2D_DrawText(&t, C2D_WithColor, 10.0f, 50.0f, 0.5f, 0.55f, 0.55f, C2D_Color32(0, 0, 0, 255));
+            static C2D_Text t[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&t[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], dexText);
+                        C2D_TextOptimize(&t[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&t[g_dynamicBufIdx], C2D_WithColor, 10.0f, 50.0f, 0.5f, 0.55f, 0.55f, C2D_Color32(0, 0, 0, 255));
         } else if (g_currentTab == 4) {
             // CARD
             uint32_t saveBlock2 = core->busRead32(core, g_config->saveBlock2Ptr);
@@ -700,10 +763,12 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
             char cardText[256];
             snprintf(cardText, sizeof(cardText), "[Trainer Card]\n\nName: %s\nIDNo. %05d\n\nMoney: $ %u\nTime: %d:%02d", 
                      trainerName, trainerId, money, hours, minutes);
-            C2D_Text t;
-            C2D_TextParse(&t, g_staticBuf, cardText);
-            C2D_TextOptimize(&t);
-            C2D_DrawText(&t, C2D_WithColor, 10.0f, 30.0f, 0.5f, 0.55f, 0.55f, C2D_Color32(0, 0, 0, 255));
+            static C2D_Text t[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&t[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], cardText);
+                        C2D_TextOptimize(&t[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&t[g_dynamicBufIdx], C2D_WithColor, 10.0f, 30.0f, 0.5f, 0.55f, 0.55f, C2D_Color32(0, 0, 0, 255));
         } else if (g_currentTab == 5) {
             // GUIDE
             FILE* f = fopen("sdmc:/poke_guide.txt", "r");
@@ -713,16 +778,20 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
                 guideText[511] = '\0';
                 fclose(f);
             }
-            C2D_Text t;
-            C2D_TextParse(&t, g_staticBuf, guideText);
-            C2D_TextOptimize(&t);
-            C2D_DrawText(&t, C2D_WithColor, 10.0f, 10.0f, 0.5f, 0.45f, 0.45f, C2D_Color32(0, 0, 0, 255));
+            static C2D_Text t[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&t[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], guideText);
+                        C2D_TextOptimize(&t[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&t[g_dynamicBufIdx], C2D_WithColor, 10.0f, 10.0f, 0.5f, 0.45f, 0.45f, C2D_Color32(0, 0, 0, 255));
         }
     } else if (core && core->busRead32 && !g_config) {
-        C2D_Text noConfigText;
-        C2D_TextParse(&noConfigText, g_staticBuf, "Game not supported yet.");
-        C2D_TextOptimize(&noConfigText);
-        C2D_DrawText(&noConfigText, C2D_WithColor, 10.0f, 80.0f, 0.5f, 0.6f, 0.6f, C2D_Color32(0, 0, 0, 255));
+        static C2D_Text noConfigText[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&noConfigText[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], "Game not supported yet.");
+                        C2D_TextOptimize(&noConfigText[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&noConfigText[g_dynamicBufIdx], C2D_WithColor, 10.0f, 80.0f, 0.5f, 0.6f, 0.6f, C2D_Color32(0, 0, 0, 255));
     }
     
     // Draw Tab Bar
@@ -731,18 +800,25 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
     
     const char* tabs[6] = {"PARTY", "BAG", "MAP", "DEX", "CARD", "GUIDE"};
     for (int i = 0; i < 6; i++) {
-        C2D_Text t;
-        C2D_TextParse(&t, g_staticBuf, tabs[i]);
-        C2D_TextOptimize(&t);
-        C2D_DrawText(&t, C2D_WithColor, i * 53 + 5.0f, 215.0f, 0.5f, 0.45f, 0.45f, C2D_Color32(0, 0, 0, 255));
+        if (!g_tabsInitialized) {
+            for (int j = 0; j < 6; j++) {
+                C2D_TextParse(&g_tabTexts[j], g_staticBuf, tabs[j]);
+                C2D_TextOptimize(&g_tabTexts[j]);
+            }
+            g_tabsInitialized = true;
+        }
+        C2D_DrawText(&g_tabTexts[i], C2D_WithColor, i * 53 + 5.0f, 215.0f, 0.5f, 0.45f, 0.45f, C2D_Color32(0, 0, 0, 255));
     }
     
     // Draw Touch FF Button
     C2D_DrawRectSolid(270, 0, 0.5f, 50, 30, g_pd_fastForwarding ? C2D_Color32(0, 255, 0, 255) : C2D_Color32(80, 80, 80, 255));
-    C2D_Text ffText;
-    C2D_TextParse(&ffText, g_staticBuf, "FF");
-    C2D_TextOptimize(&ffText);
-    C2D_DrawText(&ffText, C2D_WithColor, 285.0f, 5.0f, 0.5f, 0.5f, 0.5f, C2D_Color32(255, 255, 255, 255));
+    static C2D_Text ffText[2];
+                    if (g_ui_dirty) {
+                        C2D_TextParse(&ffText[g_dynamicBufIdx], g_dynamicBuf[g_dynamicBufIdx], "FF");
+                        C2D_TextOptimize(&ffText[g_dynamicBufIdx]);
+                    }
+                    C2D_DrawText(&ffText[g_dynamicBufIdx], C2D_WithColor, 285.0f, 5.0f, 0.5f, 0.5f, 0.5f, C2D_Color32(255, 255, 255, 255));
     
-    C2D_Flush(); 
+    C2D_Flush();
+    g_ui_dirty = false; 
 }

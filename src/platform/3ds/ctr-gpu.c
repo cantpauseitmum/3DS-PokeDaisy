@@ -110,6 +110,10 @@ void ctrRestoreState(void) {
 	BufInfo_Add(&mgba_bufInfo, ctrVertexBuffer, sizeof(struct ctrUIVertex), 4, 0x3210);
 	C3D_SetBufInfo(&mgba_bufInfo);
 	
+	C3D_TexEnvInit(C3D_GetTexEnv(3));
+	C3D_TexEnvInit(C3D_GetTexEnv(4));
+	C3D_TexEnvInit(C3D_GetTexEnv(5));
+	
 	// Ensure activeTexture is reset so it forces a re-bind next time
 	activeTexture = NULL;
 }
