@@ -362,9 +362,13 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
             uint8_t partyCount = core->busRead8(core, g_config->playerPartyCount);
             if (partyCount > 6) partyCount = 6;
             
+            static Gen3PartyMon g_cachedParty[6];
             // Draw 6-Slot Roster on the left
             for (int i = 0; i < 6; i++) {
-                Gen3PartyMon mon = ReadPartyMon(core, g_config->playerParty, i);
+                if (g_ui_dirty) {
+                    g_cachedParty[i] = ReadPartyMon(core, g_config->playerParty, i);
+                }
+                Gen3PartyMon mon = g_cachedParty[i];
                 float yOff = i * 30.0f;
                 
                 if (i == g_selectedPartyIdx) {
@@ -399,7 +403,11 @@ void PokeDaisy_DrawBottomScreen(C3D_RenderTarget* bottomScreen, struct mCore* co
             }
             
             // Draw Advanced Stats for selected Mon on the right
-            Gen3PartyMon selMon = ReadPartyMon(core, g_config->playerParty, g_selectedPartyIdx);
+            static Gen3PartyMon g_cachedSelMon;
+            if (g_ui_dirty) {
+                g_cachedSelMon = ReadPartyMon(core, g_config->playerParty, g_selectedPartyIdx);
+            }
+            Gen3PartyMon selMon = g_cachedSelMon;
             if (selMon.isValid && g_selectedPartyIdx < partyCount) {
                 const char* species = (selMon.species <= 411) ? pd_species_names[selMon.species] : "???";
                 char statText[512];
